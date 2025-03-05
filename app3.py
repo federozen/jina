@@ -1,11 +1,6 @@
-import os
 import streamlit as st
 import requests
 from openai import OpenAI
-from dotenv import load_dotenv
-
-# Cargar variables de entorno
-load_dotenv()
 
 # Configuración de la página
 st.set_page_config(page_title="AI Web Scraper Chatbot", page_icon="🌐")
@@ -18,13 +13,11 @@ if 'messages' not in st.session_state:
 st.title("🌐 Web Scraper Chatbot con Jina.ai")
 st.write("Obtén información de cualquier sitio web usando Jina.ai")
 
-# Obtener API Key de variable de entorno
-openai_api_key = os.getenv('OPENAI_API_KEY')
+# Configuración de la barra lateral
+st.sidebar.header("Configuración")
 
-# Verificar si la API Key está configurada
-if not openai_api_key:
-    st.warning("Por favor, configura la variable de entorno OPENAI_API_KEY")
-    st.stop()
+# Input para la clave API de OpenAI
+openai_api_key = st.sidebar.text_input("API Key de OpenAI", type="password")
 
 # Función para hacer scraping del sitio web con Jina.ai
 def scrape_website(url):
@@ -49,10 +42,10 @@ def scrape_website(url):
         return f"Error de scraping: {str(e)}"
 
 # Función para obtener respuesta de IA
-def get_ai_response(user_input, scraped_content):
+def get_ai_response(api_key, user_input, scraped_content):
     try:
         # Inicializar cliente de OpenAI
-        client = OpenAI(api_key=openai_api_key)
+        client = OpenAI(api_key=api_key)
         
         # Preparar prompt
         prompt = f"""
@@ -88,32 +81,27 @@ def main():
     # Input de chat
     user_input = st.chat_input("Haz una pregunta sobre el sitio web")
     
+    # Verificar clave API
+    if not openai_api_key:
+        st.warning("Por favor, ingresa tu API Key de OpenAI en la barra lateral.")
+        return
+    
     # Procesar entrada de usuario
     if user_input and url:
-        # Verificar si ya existe esta conversación para evitar duplicados
-        if not st.session_state.messages or st.session_state.messages[-1]["role"] != "assistant":
-            # Añadir mensaje de usuario al historial
-            st.session_state.messages.append({"role": "user", "content": user_input})
-            
-            # Mostrar mensaje de usuario
-            with st.chat_message("user"):
-                st.write(user_input)
-            
-            # Scrapear sitio web con Jina.ai
-            with st.spinner("Obteniendo contenido del sitio web con Jina.ai..."):
-                scraped_content = scrape_website(url)
-            
-            # Generar respuesta de IA
-            with st.spinner("Generando respuesta..."):
-                ai_response = get_ai_response(user_input, scraped_content)
-            
-            # Añadir respuesta de IA al historial
-            st.session_state.messages.append({"role": "assistant", "content": ai_response})
-            
-            # Mostrar respuesta de IA
-            with st.chat_message("assistant"):
-                st.write(ai_response)
-
+        # Añadir mensaje de usuario al historial
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        
+        # Scrapear sitio web con Jina.ai
+        with st.spinner("Obteniendo contenido del sitio web con Jina.ai..."):
+            scraped_content = scrape_website(url)
+        
+        # Generar respuesta de IA
+        with st.spinner("Generando respuesta..."):
+            ai_response = get_ai_response(openai_api_key, user_input, scraped_content)
+        
+        # Añadir respuesta de IA al historial
+        st.session_state.messages.append({"role": "assistant", "content": ai_response})
+    
     # Mostrar historial de chat
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
